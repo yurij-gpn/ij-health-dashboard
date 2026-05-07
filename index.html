@@ -1422,7 +1422,7 @@ async function openChartsModal(tabKey) {
 }
 
 // ── Utils ──────────────────────────────────────────────────────────────────
-function expectedMonth(){const d=new Date(),m=d.getMonth()+1,y=d.getFullYear();return(m<10?'0':'')+m+'.'+y;}
+function expectedMonth(){const d=new Date();d.setMonth(d.getMonth()-1);const m=d.getMonth()+1,y=d.getFullYear();return(m<10?'0':'')+m+'.'+y;}
 function cmpMonth(a,b){const[am,ay]=a.split('.').map(Number),[bm,by]=b.split('.').map(Number);return ay!==by?ay-by:am-bm;}
 function showLoading(msg){document.getElementById('loadingText').textContent=msg||'LOADING…';document.getElementById('loadingOverlay').classList.add('on');}
 function hideLoading(){document.getElementById('loadingOverlay').classList.remove('on');}
