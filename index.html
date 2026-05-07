@@ -1,0 +1,1441 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>IT-JIM Health Score</title>
+<script src="https://accounts.google.com/gsi/client" async></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&family=DM+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg:#f0f2f5; --surface:#fff; --surface2:#f7f8fa;
+  --border:rgba(0,0,0,0.07); --border2:rgba(0,0,0,0.13);
+  --text:#1a2232; --muted:#7a8a9e; --muted2:#b0bcc8;
+  --green:#0d9e6e; --amber:#c97a10; --red:#d63550; --blue:#2563eb;
+  --cat-rev:#2563eb; --cat-growth:#0d9488; --cat-people:#7c3aed; --cat-org:#0891b2;
+  --mono:'DM Mono',monospace; --sans:'DM Sans',sans-serif;
+  --sh:0 1px 4px rgba(0,0,0,.06),0 4px 12px rgba(0,0,0,.06);
+  --sh-lg:0 4px 16px rgba(0,0,0,.10),0 12px 40px rgba(0,0,0,.08);
+}
+*{margin:0;padding:0;box-sizing:border-box;}
+body{background:var(--bg);color:var(--text);font-family:var(--sans);min-height:100vh;}
+
+/* ── Sign-in ── */
+#signInScreen{min-height:100vh;display:flex;align-items:center;justify-content:flex-end;
+  background:url('https://i.postimg.cc/npvHjJJv/stonks-helth.webp') center center / cover no-repeat;}
+.si-card{background:rgba(255,255,255,.93);backdrop-filter:blur(8px);border-radius:16px;
+  padding:48px 40px;box-shadow:var(--sh-lg);text-align:center;max-width:380px;width:90%;margin-right:8vw;}
+.si-logo{width:48px;height:48px;background:var(--text);border-radius:10px;display:grid;place-items:center;margin:0 auto 20px;font-family:var(--mono);font-size:14px;font-weight:700;color:#fff;}
+.si-card h1{font-size:22px;font-weight:700;margin-bottom:8px;}
+.si-card p{font-size:13px;color:var(--muted);margin-bottom:28px;line-height:1.6;}
+.si-btn{display:inline-flex;align-items:center;gap:10px;padding:12px 24px;background:#fff;border:1px solid var(--border2);border-radius:8px;cursor:pointer;font-size:14px;font-weight:500;font-family:var(--sans);color:var(--text);box-shadow:var(--sh);transition:box-shadow .15s;}
+.si-btn:hover{box-shadow:var(--sh-lg);}
+.si-btn img{width:18px;height:18px;}
+
+/* ── Loading ── */
+#loadingOverlay{display:none;position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:rgba(26,34,50,.88);backdrop-filter:blur(8px);border-radius:12px;padding:12px 20px;z-index:200;align-items:center;gap:12px;box-shadow:0 8px 32px rgba(0,0,0,.2);min-width:220px;justify-content:center;}
+#loadingOverlay.on{display:flex;}
+#loadingOverlay .spinner{border-color:rgba(255,255,255,.25);border-top-color:#fff;}
+#loadingOverlay .loading-text{color:rgba(255,255,255,.85);}
+.spinner{width:32px;height:32px;border:3px solid var(--border2);border-top-color:var(--blue);border-radius:50%;animation:spin .8s linear infinite;}
+.loading-text{font-family:var(--mono);font-size:11px;color:var(--muted);letter-spacing:.08em;}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* ── App ── */
+#app{max-width:1480px;margin:0 auto;padding:0 0 64px;}
+
+/* ── Header ── */
+header{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;padding:14px 28px;border-bottom:1px solid var(--border2);gap:16px;position:sticky;top:0;z-index:100;background:#f0f2f5;box-shadow:0 2px 8px rgba(0,0,0,.08);}
+.hdr-left{display:flex;align-items:center;gap:12px;}
+.logo-img-wrap{width:80px;height:32px;background:#000;border-radius:6px;display:grid;place-items:center;padding:4px 8px;flex-shrink:0;}
+.logo-img{width:100%;height:100%;object-fit:contain;filter:brightness(0) invert(1);}
+.logo-name{font-size:15px;font-weight:700;letter-spacing:.04em;}
+.logo-name{font-size:15px;font-weight:700;letter-spacing:.04em;}
+.logo-sub{font-size:10px;color:var(--muted);font-family:var(--mono);letter-spacing:.1em;margin-top:1px;}
+.month-nav{display:flex;align-items:center;gap:4px;justify-content:center;}
+.month-nav button{width:30px;height:30px;background:var(--surface);border:1px solid var(--border2);border-radius:7px;cursor:pointer;font-size:14px;color:var(--text);display:grid;place-items:center;transition:all .15s;}
+.month-nav button:hover:not(:disabled){background:var(--text);color:#fff;border-color:var(--text);}
+.month-nav button:disabled{opacity:.3;cursor:default;}
+.month-label{font-family:var(--mono);font-size:13px;font-weight:500;min-width:88px;text-align:center;letter-spacing:.06em;padding:0 4px;}
+.hdr-right{display:flex;align-items:center;gap:10px;justify-content:flex-end;}
+.hdr-btn{display:flex;align-items:center;gap:7px;padding:8px 14px;background:var(--surface);border:1px solid var(--border2);border-radius:8px;cursor:pointer;font-size:12px;font-weight:500;color:var(--text);font-family:var(--sans);transition:all .15s;}
+.hdr-btn:hover{background:var(--text);color:#fff;border-color:var(--text);}
+.hdr-meta{font-family:var(--mono);font-size:10px;color:var(--muted);text-align:right;line-height:1.8;}
+
+/* ── Hero ── */
+.hero{display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:40px;padding:36px 0 32px;border-bottom:1px solid var(--border);}
+.hero-gauge-area{display:flex;flex-direction:column;align-items:center;gap:4px;}
+.hero-score-block{text-align:center;margin-top:-4px;}
+.hero-score-num{font-family:var(--mono);font-size:44px;font-weight:400;letter-spacing:-.02em;line-height:1;}
+.hero-score-sub{font-size:9px;color:var(--muted);letter-spacing:.18em;margin-top:4px;font-weight:500;}
+.hero-cats{display:flex;flex-direction:column;gap:10px;}
+.cat-row{display:flex;align-items:center;gap:12px;padding:10px 14px;background:var(--surface);border:1px solid var(--border);border-radius:10px;box-shadow:var(--sh);min-width:220px;}
+.cat-dot{width:16px;height:16px;border-radius:50%;flex-shrink:0;}
+.cat-name{font-size:10px;font-weight:600;letter-spacing:.1em;color:var(--muted);}
+.cat-score{font-family:var(--mono);font-size:18px;font-weight:400;line-height:1.3;}
+.cat-bar-bg{height:3px;background:var(--border2);border-radius:2px;margin-top:4px;}
+.cat-bar-fill{height:3px;border-radius:2px;}
+.cat-weight{font-family:var(--mono);font-size:9px;color:var(--muted2);margin-top:2px;text-align:right;}
+.hero-radar{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:16px 20px;box-shadow:var(--sh);display:flex;flex-direction:column;}
+.radar-title{font-size:10px;font-weight:600;letter-spacing:.12em;color:var(--muted);margin-bottom:10px;}
+
+/* ── Section ── */
+.sec-title{font-size:10px;font-weight:600;letter-spacing:.2em;color:var(--muted);padding:24px 0 14px;display:flex;align-items:center;gap:10px;}
+.sec-title::after{content:'';flex:1;height:1px;background:var(--border2);}
+
+/* ── Grid ── */
+.dept-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;}
+@media(max-width:1300px){.dept-grid{grid-template-columns:repeat(3,1fr);}}
+@media(max-width:960px){.dept-grid{grid-template-columns:repeat(2,1fr);}}
+
+/* ── Card ── */
+.dept-card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:16px 16px 12px;box-shadow:var(--sh);transition:box-shadow .2s,transform .2s;}
+.dept-card:hover{box-shadow:var(--sh-lg);transform:translateY(-1px);}
+.dept-card.pending{background:#fffdf0;border-color:#f5d07a;}
+.card-top{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px;}
+.dept-name{font-size:14px;font-weight:600;}
+.dept-desc{font-size:10px;color:var(--muted);margin-top:2px;font-family:var(--mono);}
+.dept-badge{font-size:9px;font-weight:600;padding:3px 8px;border-radius:20px;font-family:var(--mono);flex-shrink:0;}
+.gauge-area{display:flex;flex-direction:column;align-items:center;margin-bottom:10px;}
+.dept-score{font-family:var(--mono);font-size:20px;font-weight:400;margin-top:-2px;}
+.pending-area{text-align:center;padding:20px 0 14px;}
+.pending-lbl{font-family:var(--mono);font-size:13px;font-weight:600;color:var(--amber);letter-spacing:.1em;}
+.pending-sub{font-size:10px;color:var(--muted);margin-top:4px;}
+.dept-comps{border-top:1px solid var(--border);padding-top:8px;}
+.comp-row{display:flex;align-items:center;gap:7px;padding:4px 5px;border-radius:5px;position:relative;cursor:default;transition:background .12s;}
+.comp-row:hover{background:var(--surface2);}
+.comp-dot{width:5px;height:5px;border-radius:50%;flex-shrink:0;}
+.comp-name{font-size:10px;flex:1;}
+.comp-w{font-family:var(--mono);font-size:9px;color:var(--muted);}
+.comp-sc{font-family:var(--mono);font-size:10px;font-weight:500;min-width:28px;text-align:right;}
+
+/* ── Snapshot button ── */
+.snap-btn{width:100%;margin-top:10px;padding:8px;background:#f0f7ff;border:1px solid var(--blue);border-radius:7px;cursor:pointer;font-size:11px;font-weight:600;color:var(--blue);font-family:var(--sans);transition:all .15s;display:flex;align-items:center;justify-content:center;gap:6px;}
+.snap-btn:hover:not(:disabled){background:var(--blue);color:#fff;}
+.snap-btn:disabled{opacity:.5;cursor:default;}
+.snap-btn.done{background:#f0fdf4;border-color:var(--green);color:var(--green);}
+.snap-btn.warn{background:#fffbeb;border-color:var(--amber);color:var(--amber);}
+
+/* ── Tooltip ── */
+.comp-tt{display:none;position:fixed;z-index:9999;background:var(--surface);border:1px solid var(--border2);border-radius:10px;padding:12px 14px;min-width:240px;max-width:300px;box-shadow:0 12px 40px rgba(0,0,0,.15);pointer-events:none;}
+.comp-tt.on{display:block;}
+.tt-title{font-size:11px;font-weight:600;margin-bottom:8px;color:var(--muted);}
+.tt-row{display:flex;justify-content:space-between;align-items:baseline;padding:4px 0;border-bottom:1px solid var(--border);gap:8px;}
+.tt-row:last-of-type{border-bottom:none;}
+.tt-name{font-size:10px;flex:1;}
+.tt-inp{font-family:var(--mono);font-size:9px;color:var(--muted);}
+.tt-sc{font-family:var(--mono);font-size:10px;font-weight:500;min-width:28px;text-align:right;}
+.tt-hint{font-size:9px;color:var(--muted);font-style:italic;margin-top:8px;padding-top:8px;border-top:1px solid var(--border);line-height:1.5;}
+
+/* ── Score colors ── */
+.cg{color:var(--green);} .ca{color:var(--amber);} .cr{color:var(--red);}
+
+/* ── Modal ── */
+.modal-bg{display:none;position:fixed;inset:0;z-index:1000;background:rgba(0,0,0,.35);backdrop-filter:blur(4px);align-items:center;justify-content:center;}
+.modal-bg.on{display:flex;}
+.modal{background:var(--surface);border-radius:16px;padding:28px 32px;width:min(840px,95vw);max-height:90vh;overflow:auto;box-shadow:0 24px 80px rgba(0,0,0,.18);}
+.modal-hdr{display:flex;justify-content:space-between;align-items:center;margin-bottom:24px;}
+.modal-title{font-size:16px;font-weight:700;}
+.modal-x{width:32px;height:32px;background:var(--bg);border:1px solid var(--border);border-radius:8px;cursor:pointer;font-size:16px;display:grid;place-items:center;transition:all .15s;}
+.modal-x:hover{background:var(--text);color:#fff;}
+.chart-wrap{height:360px;position:relative;}
+
+/* ── Error ── */
+.err-banner{display:none;background:#fdeaed;border:1px solid #f4c7c3;border-radius:8px;padding:10px 14px;margin:12px 0;font-size:12px;color:var(--red);}
+.err-banner.on{display:block;}
+
+
+
+
+/* ── Color-coded card headers ── */
+.card-color-hdr{border-radius:8px 8px 0 0;margin:-16px -16px 12px -16px;padding:8px 14px 8px 14px;display:flex;align-items:center;justify-content:space-between;}
+.card-color-hdr .hdr-dept-name{font-size:13px;font-weight:700;color:#fff;display:flex;align-items:center;gap:4px;}
+.card-color-hdr .hdr-cat-pct{font-size:9px;color:rgba(255,255,255,.75);font-family:var(--mono);}
+.cat-card-hdr{border-radius:8px 8px 0 0;margin:-10px -14px 10px -14px;padding:8px 14px;display:flex;align-items:center;justify-content:space-between;}
+.cat-card-hdr .hdr-cat-name{font-size:11px;font-weight:700;color:#fff;letter-spacing:.1em;}
+.cat-card-hdr .hdr-cat-pct{font-size:9px;color:rgba(255,255,255,.75);font-family:var(--mono);}
+
+/* ── Comp progress bar ── */
+.comp-bar-wrap{flex:1;height:4px;background:var(--border2);border-radius:2px;margin:0 6px;}
+.comp-bar-fill{height:4px;border-radius:2px;transition:width .4s ease;}
+/* ── Card view toggle ── */
+.card-view-toggle{display:flex;gap:0;border:1px solid var(--border2);border-radius:6px;overflow:hidden;margin-bottom:8px;}
+.cvt-btn{padding:3px 10px;font-size:9px;font-weight:600;font-family:var(--mono);cursor:pointer;background:var(--surface2);border:none;color:var(--muted);transition:all .15s;letter-spacing:.04em;}
+.cvt-btn.active{background:var(--text);color:#fff;}
+.dept-radar-wrap{padding:4px 0 8px;display:none;}
+.dept-radar-wrap.visible{display:block;}
+.dept-comps-wrap{display:block;}
+.dept-comps-wrap.hidden{display:none;}
+/* ── Sheet link ── */
+.sheet-link{opacity:.4;transition:opacity .15s;margin-right:4px;flex-shrink:0;display:inline-flex;align-items:center;}
+.sheet-link:hover{opacity:1;}
+
+
+/* ── Global view switch ── */
+.global-view-switch{display:flex;gap:0;border:1px solid var(--border2);border-radius:6px;overflow:hidden;}
+.gvs-btn{padding:4px 12px;font-size:9px;font-weight:600;font-family:var(--mono);cursor:pointer;background:var(--surface2);border:none;color:var(--muted);transition:all .15s;letter-spacing:.04em;}
+.gvs-btn.active{background:var(--text);color:#fff;}
+
+/* ── Update Mode ── */
+body.update-mode { --bg:#fffcf0; }
+#mainHeader.update-active { background:rgba(255,249,235,.95) !important; border-bottom-color:rgba(201,122,16,.3); }
+body.update-mode .sec-title { color:var(--amber); }
+body.update-mode .sec-title::after { background:rgba(201,122,16,.3); }
+.update-toggle-btn { background:var(--surface); border:1px solid var(--border2); }
+.update-toggle-btn.active { background:#c97a10; border-color:#c97a10; color:#fff; }
+/* card in update mode */
+.dept-card.update-card { border-color:rgba(201,122,16,.35); background:#fff; }
+.dept-card.update-card .nm-section { border-top:1px dashed rgba(201,122,16,.3); margin-top:10px; padding-top:10px; }
+.nm-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:8px; }
+.nm-label { font-size:9px; font-weight:700; letter-spacing:.1em; color:var(--muted); }
+.nm-month-chip { font-family:var(--mono); font-size:10px; font-weight:600; padding:2px 8px; border-radius:5px; }
+.nm-month-chip.ok       { background:#dcfce7; color:#15803d; border:1px solid #86efac; }
+.nm-month-chip.conflict { background:#fef3c7; color:#b45309; border:1px solid #fcd34d; }
+.nm-month-chip.empty    { background:#fee2e2; color:#b91c1c; border:1px solid #fca5a5; }
+.conflict-warn { font-size:9px; color:var(--amber); font-family:var(--mono); margin-bottom:6px; display:flex; align-items:center; gap:4px; }
+/* month chips row at bottom */
+.month-chips { display:flex; flex-wrap:wrap; gap:4px; margin-top:10px; padding-top:10px; border-top:1px solid var(--border); }
+.month-chip { font-family:var(--mono); font-size:9px; padding:2px 7px; border-radius:4px; background:#e0f2fe; color:#0369a1; border:1px solid #bae6fd; }
+.no-snaps { font-family:var(--mono); font-size:9px; color:var(--muted2); }
+/* update snap button */
+.upd-snap-btn { width:100%; margin-top:8px; padding:8px; border-radius:7px; cursor:pointer; font-size:11px; font-weight:600; font-family:var(--sans); transition:all .15s; display:flex; align-items:center; justify-content:center; gap:5px; border:1px solid; }
+.upd-snap-btn.ready    { background:#f0f7ff; border-color:var(--blue); color:var(--blue); }
+.upd-snap-btn.ready:hover:not(:disabled) { background:var(--blue); color:#fff; }
+.upd-snap-btn.conflict { background:#fffbeb; border-color:var(--amber); color:var(--amber); }
+.upd-snap-btn.conflict:hover:not(:disabled) { background:var(--amber); color:#fff; }
+.upd-snap-btn.done     { background:#f0fdf4; border-color:var(--green); color:var(--green); cursor:default; }
+.upd-snap-btn.loading  { background:var(--surface2); border-color:var(--border2); color:var(--muted); cursor:default; }
+
+@keyframes fadeUp{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+.dept-card{animation:fadeUp .3s ease both;}
+.dept-card:nth-child(1){animation-delay:.04s}.dept-card:nth-child(2){animation-delay:.08s}
+.dept-card:nth-child(3){animation-delay:.12s}.dept-card:nth-child(4){animation-delay:.16s}
+.dept-card:nth-child(5){animation-delay:.20s}.dept-card:nth-child(6){animation-delay:.24s}
+.dept-card:nth-child(7){animation-delay:.28s}.dept-card:nth-child(8){animation-delay:.32s}
+
+/* ── Responsive ── */
+@media(max-width:768px){
+  .logo-img-wrap,.logo-name{display:none;}
+  header{grid-template-columns:1fr auto 1fr;}
+  .hdr-left{visibility:hidden;pointer-events:none;max-width:80px;}
+  .hdr-right{justify-content:flex-end;}
+  .hero{grid-template-columns:1fr;gap:20px;padding:20px 0 20px;}
+  .hero-radar{order:3;width:100%;}
+  .hero-cats{flex-direction:row;flex-wrap:wrap;gap:8px;}
+  .cat-row{min-width:calc(50% - 4px);}
+  .hero-gauge-area{align-self:center;}
+}
+</style>
+</head>
+<body>
+
+<!-- Sign-in -->
+<div id="signInScreen">
+  <div class="si-card">
+    <div class="si-logo"><img src="https://www.it-jim.com/wp-content/uploads/2025/08/logo.svg" alt="IT-JIM" style="width:100%;height:100%;object-fit:contain;filter:brightness(0) invert(1);"/></div>
+    <h1>IT-JIM Health Dashboard</h1>
+    <div id="siBtnWrap">
+      <button class="si-btn" onclick="signIn()">
+        <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="G">
+        Sign in with Google
+      </button>
+    </div>
+    <div id="siHint" style="display:none;margin-top:14px;font-family:var(--mono);font-size:11px;color:var(--muted)">
+      <span style="display:inline-flex;align-items:center;gap:6px">
+        <span style="width:10px;height:10px;border:2px solid var(--muted2);border-top-color:var(--blue);border-radius:50%;display:inline-block;animation:spin .8s linear infinite"></span>
+        Restoring session…
+      </span>
+    </div>
+  </div>
+</div>
+
+<!-- Loading -->
+<div id="loadingOverlay">
+  <div class="spinner"></div>
+  <div class="loading-text" id="loadingText">LOADING…</div>
+</div>
+
+<header id="mainHeader" style="display:none">
+    <div class="hdr-left">
+      <div class="logo-img-wrap">
+        <img src="https://www.it-jim.com/wp-content/uploads/2025/08/logo.svg" alt="IT-JIM" class="logo-img"/>
+      </div>
+      <div class="logo-name">Health Dashboard</div>
+    </div>
+    <div class="month-nav">
+      <button id="btnPrev">&#8592;</button>
+      <div class="month-label" id="monthLabel">—</div>
+      <button id="btnNext">&#8594;</button>
+    </div>
+    <div class="hdr-right">
+      <button class="hdr-btn update-toggle-btn" id="updateToggle" onclick="toggleUpdateMode()">
+        ✏ Update Mode
+      </button>
+      <button class="hdr-btn" id="openHistory">
+        <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.7">
+          <polyline points="8,4 8,8 11,10"/><circle cx="8" cy="8" r="6"/>
+        </svg>
+        Timeline
+      </button>
+      <div class="hdr-meta">
+        <div style="font-size:10px;color:var(--muted)" id="userEmail">—</div>
+        <button class="hdr-btn" style="padding:4px 10px;font-size:10px" onclick="signOut()">Sign out</button>
+      </div>
+    </div>
+</header>
+
+<!-- App -->
+<div id="app" style="display:none">
+
+  <div id="errBanner" class="err-banner" style="margin:0 28px"></div>
+
+  <div class="hero" style="padding-left:28px;padding-right:28px;">
+    <div class="hero-gauge-area">
+      <div id="heroSvg"></div>
+      <div class="hero-score-block">
+        <div class="hero-score-num" id="heroNum">—</div>
+        <div class="hero-score-sub">COMPANY HEALTH SCORE</div>
+      </div>
+    </div>
+    <div class="hero-cats" id="catRows"></div>
+    <div class="hero-radar">
+      <div class="radar-title">DEPARTMENT RADAR</div>
+      <canvas id="radarChart" width="280" height="260"></canvas>
+    </div>
+  </div>
+
+  <div class="sec-title" style="justify-content:space-between;padding-right:2px;margin:0 28px;">
+    <span>DEPARTMENT BREAKDOWN</span>
+    <div class="global-view-switch">
+      <button class="gvs-btn active" id="gvsListBtn" onclick="setGlobalView('list')">LIST</button>
+      <button class="gvs-btn" id="gvsRadarBtn" onclick="setGlobalView('radar')">RADAR</button>
+    </div>
+  </div>
+  <div class="dept-grid" id="deptGrid" style="padding:0 28px"></div>
+</div>
+
+<!-- Tooltip -->
+<div class="comp-tt" id="globalTT"></div>
+
+<!-- Timeline modal -->
+<div class="modal-bg" id="histModal">
+  <div class="modal" style="max-width:900px;">
+    <div class="modal-hdr">
+      <div class="modal-title">Timeline</div>
+      <button class="modal-x" id="closeHistory">✕</button>
+    </div>
+    <div id="chartTabs" style="display:flex;gap:0;border-bottom:1px solid var(--border2);margin-bottom:16px;overflow-x:auto;flex-shrink:0;padding-bottom:0;"></div>
+    <div id="timelineChartWrap" style="height:340px;position:relative;"></div>
+  </div>
+</div>
+
+<script>
+// ── Config ─────────────────────────────────────────────────────────────────
+const CLIENT_ID     = '829037943918-kf8bj39v7ahetqlqon2orahfvgu3i6mq.apps.googleusercontent.com';
+const MASTER_ID     = '1ps2J-KAy5NcfbDtOA0puejScWVH8ZWq3jLlccQj83ZM';
+const SHEETS_API    = 'https://sheets.googleapis.com/v4/spreadsheets';
+const SOURCE_TAB    = 'New Month';
+const SCOPE         = 'https://www.googleapis.com/auth/spreadsheets';
+
+// ── State ──────────────────────────────────────────────────────────────────
+let token        = null;
+let tokenClient  = null;
+let depts        = [];        // [{name,category,weight,fileId}]
+let currentMonth = '';        // e.g. "04.2026"
+let allMonths    = [];        // sorted ["02.2026","03.2026","04.2026"]
+let sheetTabs    = {};        // fileId → [{title,sheetId}]
+let monthData    = {};        // fileId → {status,finalScore,components,month}
+let snapStates   = {};        // fileId → 'idle'|'confirm'|'loading'|'done'
+let radarChart   = null;
+let histChart    = null;
+let updateMode   = false;
+let nmCache      = {};
+let globalView   = 'list';        // 'list' | 'radar'
+let prevMonthScores = {};         // fileId → score (loaded lazily)
+
+// ── OAuth (persistent) ─────────────────────────────────────────────────────
+const SK_TOK = 'itjim_tok', SK_EXP = 'itjim_exp', SK_EMAIL = 'itjim_email';
+
+window.addEventListener('load', () => {
+  tokenClient = google.accounts.oauth2.initTokenClient({
+    client_id: CLIENT_ID, scope: SCOPE, callback: onToken
+  });
+  // Try to restore saved token
+  const saved = sessionStorage.getItem(SK_TOK);
+  const exp   = parseInt(sessionStorage.getItem(SK_EXP) || '0');
+  if (saved && exp > Date.now() + 60_000) {
+    token = saved;
+    const email = sessionStorage.getItem(SK_EMAIL) || '';
+    document.getElementById('userEmail').textContent = email;
+    document.getElementById('signInScreen').style.display = 'none';
+    document.getElementById('mainHeader').style.display = 'grid';
+    document.getElementById('app').style.display = 'block';
+    scheduleRefresh(exp - Date.now() - 300_000);
+    init();
+  } else {
+    // Silent re-auth — no popup if Google session alive
+    document.getElementById('siHint').style.display = 'block';
+    tokenClient.requestAccessToken({ prompt: '' });
+  }
+});
+
+function scheduleRefresh(ms) {
+  if (ms > 0) setTimeout(() => tokenClient.requestAccessToken({ prompt: '' }), ms);
+}
+
+function signIn() { tokenClient.requestAccessToken({ prompt: 'select_account' }); }
+
+function onToken(resp) {
+  if (resp.error) {
+    // Silent failed → show button
+    document.getElementById('siHint').style.display = 'none';
+    document.getElementById('siBtnWrap').style.display = 'block';
+    return;
+  }
+  token = resp.access_token;
+  const expMs = Date.now() + (resp.expires_in ?? 3600) * 1000;
+  sessionStorage.setItem(SK_TOK, token);
+  sessionStorage.setItem(SK_EXP, String(expMs));
+  scheduleRefresh((resp.expires_in ?? 3600) * 1000 - 300_000);
+  // Get email via tokeninfo
+  fetch(`https://www.googleapis.com/oauth2/v3/tokeninfo?access_token=${token}`)
+    .then(r => r.json()).then(d => {
+      const email = d.email || '';
+      sessionStorage.setItem(SK_EMAIL, email);
+      document.getElementById('userEmail').textContent = email;
+    }).catch(() => {});
+  document.getElementById('signInScreen').style.display = 'none';
+  document.getElementById('mainHeader').style.display = 'grid';
+  document.getElementById('app').style.display = 'block';
+  if (Object.keys(sheetTabs).length === 0) init(); // avoid double-init on silent refresh
+}
+
+function signOut() {
+  sessionStorage.removeItem(SK_TOK); sessionStorage.removeItem(SK_EXP); sessionStorage.removeItem(SK_EMAIL);
+  google.accounts.oauth2.revoke(token, () => {
+    token = null;
+    document.getElementById('app').style.display = 'none';
+    document.getElementById('mainHeader').style.display = 'none';
+    document.getElementById('signInScreen').style.display = 'flex';
+    document.getElementById('siHint').style.display = 'none';
+    document.getElementById('siBtnWrap').style.display = 'block';
+  });
+}
+
+// ── API helper ─────────────────────────────────────────────────────────────
+async function api(path, opts = {}) {
+  const resp = await fetch(SHEETS_API + path, {
+    method: opts.method || 'GET',
+    headers: {
+      Authorization: `Bearer ${token}`,
+      ...(opts.body !== undefined ? { 'Content-Type': 'application/json' } : {})
+    },
+    body: opts.body !== undefined ? JSON.stringify(opts.body) : undefined
+  });
+  if (!resp.ok) {
+    const e = await resp.json().catch(() => ({}));
+    if (resp.status === 429) showToast('Cool down for 1 min. Spreadsheets API limit reached', '#c97a10');
+    throw new Error(e.error?.message || `HTTP ${resp.status}`);
+  }
+  return resp.status === 204 ? {} : resp.json();
+}
+
+function sheetRange(tab, range) {
+  return encodeURIComponent(`'${tab}'!${range}`);
+}
+
+// ── Init ───────────────────────────────────────────────────────────────────
+async function init() {
+  showLoading('Reading master config…');
+  try {
+    // 1. Master config
+    const cfg = await api(`/${MASTER_ID}/values/A:D?valueRenderOption=FORMATTED_VALUE`);
+    depts = parseDepts(cfg.values || []);
+
+    // 2. Detect current month
+    currentMonth = expectedMonth();
+
+    // 3. Sheet metadata (all depts in parallel)
+    showLoading('Connecting to department files…');
+    await Promise.all(depts.map(d => loadSheetTabs(d.fileId)));
+
+    // 4. Collect all available months
+    const mSet = new Set([currentMonth]);
+    for (const tabs of Object.values(sheetTabs))
+      for (const t of tabs)
+        if (/^\d{2}\.\d{4}$/.test(t.title)) mSet.add(t.title);
+    allMonths = [...mSet].sort(cmpMonth);
+
+    // 5. Load this month's data
+    showLoading('Loading ' + currentMonth + ' data…');
+    await loadMonth(currentMonth);
+    render();
+  } catch (e) {
+    showErr('Failed to load dashboard: ' + e.message);
+  } finally {
+    hideLoading();
+  }
+}
+
+async function loadSheetTabs(fileId) {
+  try {
+    const r = await api(`/${fileId}?fields=sheets.properties`);
+    sheetTabs[fileId] = (r.sheets || []).map(s => ({
+      title: s.properties.title,
+      sheetId: s.properties.sheetId
+    }));
+  } catch { sheetTabs[fileId] = []; }
+}
+
+async function loadMonth(month) {
+  monthData = {};
+  prevMonthScores = {};
+  const mi = allMonths.indexOf(month);
+  const prevMonth = mi > 0 ? allMonths[mi - 1] : null;
+  await Promise.all(depts.map(async d => {
+    const tabs = sheetTabs[d.fileId] || [];
+    // Current month
+    const tab = tabs.find(t => t.title === month);
+    if (!tab) {
+      monthData[d.fileId] = { status: 'pending' };
+    } else {
+      try {
+        const r = await api(`/${d.fileId}/values/${sheetRange(month,'A:G')}?valueRenderOption=FORMATTED_VALUE`);
+        monthData[d.fileId] = { status: 'ok', ...parseSheet(r.values || []) };
+      } catch (e) {
+        monthData[d.fileId] = { status: 'error', error: e.message };
+      }
+    }
+    // Previous month — always attempt, independent of current month status
+    if (prevMonth) {
+      const ptab = tabs.find(t => t.title === prevMonth);
+      if (ptab) {
+        try {
+          const pr = await api(`/${d.fileId}/values/${sheetRange(prevMonth,'A:E')}?valueRenderOption=FORMATTED_VALUE`);
+          prevMonthScores[d.fileId] = parseSheet(pr.values || []).finalScore ?? null;
+        } catch { prevMonthScores[d.fileId] = null; }
+      }
+    }
+  }));
+}
+
+// ── Parse ──────────────────────────────────────────────────────────────────
+function parseDepts(rows) {
+  const out = [];
+  for (const row of rows.slice(1)) {
+    const [cat, name, wt, url] = row;
+    if (!name || !url) continue;
+    const m = String(url).match(/\/spreadsheets\/d\/([a-zA-Z0-9_-]+)/);
+    if (!m) continue;
+    out.push({ name, category: String(cat||'').toLowerCase(), weight: parseFloat(String(wt).replace('%',''))/100, fileId: m[1] });
+  }
+  return out;
+}
+
+function parseSheet(rows) {
+  let finalScore = null;
+  const components = [];
+  let cur = null;
+  for (const row of rows) {
+    const type  = String(row[0]||'').trim().toUpperCase();
+    const name  = String(row[1]||'').trim();
+    const wt    = String(row[2]||'').trim();
+    const input = String(row[3]||'').trim();
+    const scRaw = String(row[4]||'').trim();
+    const hint  = String(row[5]||'').trim();
+    const note  = String(row[6]||'').trim(); // monthly comments
+    const sc    = scRaw ? parseFloat(scRaw) : null;
+    if (type === 'FINAL') finalScore = sc;
+    else if (type === 'COMPONENT') { cur = { name, weight: wt, score: sc, note, metrics: [] }; components.push(cur); }
+    else if (type === 'METRIC' && cur) cur.metrics.push({ name, weight: wt, input, score: sc, hint, note });
+    else if (type === 'INFO' && cur && input) cur.metrics.push({ name, input, isInfo: true });
+  }
+  return { finalScore, components };
+}
+
+// ── Scores ─────────────────────────────────────────────────────────────────
+function companyScore() {
+  if (!depts.every(d => monthData[d.fileId]?.status === 'ok' && monthData[d.fileId]?.finalScore != null)) return null;
+  return depts.reduce((s, d) => s + d.weight * monthData[d.fileId].finalScore, 0);
+}
+
+const CAT_DEFS = [
+  { key:'revenue', label:'REVENUE',  color:'var(--cat-rev)',    hex:'#2563eb' },
+  { key:'growth',  label:'GROWTH',   color:'var(--cat-growth)', hex:'#0d9488' },
+  { key:'people',  label:'PEOPLE',   color:'var(--cat-people)', hex:'#7c3aed' },
+  { key:'org',     label:'ORG',      color:'var(--cat-org)',    hex:'#0891b2' },
+];
+
+function catScore(key) {
+  const ds = depts.filter(d => d.category === key && monthData[d.fileId]?.status === 'ok');
+  if (!ds.length) return null;
+  const tw = ds.reduce((s,d)=>s+d.weight,0);
+  return ds.reduce((s,d)=>s+d.weight*(monthData[d.fileId].finalScore||0),0)/tw;
+}
+
+// ── Gauge ──────────────────────────────────────────────────────────────────
+const GA0=135, GS=270;
+function gxy(cx,cy,r,deg){ const a=deg*Math.PI/180; return [cx+r*Math.cos(a),cy+r*Math.sin(a)]; }
+function garc(cx,cy,r,a1,a2){
+  const [x1,y1]=gxy(cx,cy,r,a1),[x2,y2]=gxy(cx,cy,r,a2);
+  return `M${x1.toFixed(1)},${y1.toFixed(1)} A${r},${r} 0 ${((a2-a1+360)%360)>180?1:0} 1 ${x2.toFixed(1)},${y2.toFixed(1)}`;
+}
+function scHex(s){ return s==null?'#9ca3af':s>=8?'#0d9e6e':s>=6?'#c97a10':'#d63550'; }
+function scCls(s){ return s==null?'':s>=8?'cg':s>=6?'ca':'cr'; }
+function fmtN(n){ return n!=null&&!isNaN(n)?Number(n).toFixed(2):'—'; }
+
+function gauge(score, w,h,cx,cy,r,sw,lbls=false) {
+  const s = score??0, na = GA0+(s/10)*GS;
+  const aA=GA0+(5/10)*GS, aG=GA0+(7/10)*GS, aE=GA0+GS;
+  let o = '';
+  o+=`<path d="${garc(cx,cy,r,GA0,aA)}" fill="none" stroke="#fecaca" stroke-width="${sw}" stroke-linecap="butt"/>`;
+  o+=`<path d="${garc(cx,cy,r,aA,aG)}" fill="none" stroke="#fde68a" stroke-width="${sw}" stroke-linecap="butt"/>`;
+  o+=`<path d="${garc(cx,cy,r,aG,aE)}" fill="none" stroke="#bbf7d0" stroke-width="${sw}" stroke-linecap="butt"/>`;
+  if(s>0) o+=`<path d="${garc(cx,cy,r,GA0,na)}" fill="none" stroke="${scHex(score)}" stroke-width="${sw*.4}" stroke-linecap="butt"/>`;
+  for(let i=0;i<=10;i++){
+    const a=GA0+(i/10)*GS,[ix,iy]=gxy(cx,cy,r+sw*.55+1,a),[ox,oy]=gxy(cx,cy,r+sw*.55+(i%5===0?r*.10:r*.05),a);
+    o+=`<line x1="${ix.toFixed(1)}" y1="${iy.toFixed(1)}" x2="${ox.toFixed(1)}" y2="${oy.toFixed(1)}" stroke="${i%5===0?'#4b5563':'#d1d5db'}" stroke-width="${i%5===0?2:1}"/>`;
+  }
+  if(lbls){
+    for(const[v,t] of [[0,'0'],[5,'5'],[10,'10']]){
+      const a=GA0+(v/10)*GS,[lx,ly]=gxy(cx,cy,r+sw*.55+r*.18,a);
+      o+=`<text x="${lx.toFixed(1)}" y="${ly.toFixed(1)}" text-anchor="${v===5?'middle':v<5?'end':'start'}" dominant-baseline="middle" font-size="${r*.15}" fill="#9ca3af" font-family="DM Mono,monospace">${t}</text>`;
+    }
+  }
+  const[tx,ty]=gxy(cx,cy,r*.77,na),[bx,by]=gxy(cx,cy,r*.16,na+180),[p1x,p1y]=gxy(cx,cy,r*.065,na+90),[p2x,p2y]=gxy(cx,cy,r*.065,na-90);
+  o+=`<polygon points="${tx.toFixed(1)},${ty.toFixed(1)} ${p1x.toFixed(1)},${p1y.toFixed(1)} ${bx.toFixed(1)},${by.toFixed(1)} ${p2x.toFixed(1)},${p2y.toFixed(1)}" fill="#374151"/>`;
+  o+=`<circle cx="${cx}" cy="${cy}" r="${r*.075}" fill="#374151"/>`;
+  o+=`<circle cx="${cx}" cy="${cy}" r="${r*.040}" fill="#f3f4f6"/>`;
+  return `<svg width="${w}" height="${h}" viewBox="0 0 ${w} ${h}" overflow="visible">${o}</svg>`;
+}
+
+// ── Render ─────────────────────────────────────────────────────────────────
+function render() {
+  const cs = companyScore();
+  const mi = allMonths.indexOf(currentMonth);
+  document.getElementById('monthLabel').textContent = currentMonth;
+  document.getElementById('btnPrev').disabled = mi <= 0;
+  document.getElementById('btnNext').disabled = mi >= allMonths.length-1;
+
+  // Hero gauge
+  document.getElementById('heroSvg').innerHTML = gauge(cs??0,220,148,110,98,82,14,true);
+  document.getElementById('heroNum').innerHTML = cs!=null
+    ? `<span class="${scCls(cs)}">${fmtN(cs)}</span>`
+    : `<span style="font-size:18px;color:var(--amber);font-family:var(--mono)">INCOMPLETE</span>`;
+
+  // Category bars
+  const cw = document.getElementById('catRows'); cw.innerHTML='';
+  for(const cat of CAT_DEFS){
+    const sc=catScore(cat.key), pct=sc!=null?(sc/10)*100:0;
+    const tw=depts.filter(d=>d.category===cat.key).reduce((s,d)=>s+d.weight,0);
+    cw.innerHTML+=`<div class="cat-row">
+      <div class="cat-dot" style="background:${cat.hex};box-shadow:0 0 0 3px ${cat.hex}30"></div>
+      <div style="flex:1">
+        <div class="cat-name" style="color:${cat.hex}">${cat.label}</div>
+        <div class="cat-score ${scCls(sc)}" style="font-size:20px;font-weight:600;">${sc!=null?fmtN(sc):'—'}</div>
+        <div class="cat-bar-bg"><div class="cat-bar-fill" style="width:${pct}%;background:${scHex(sc)}"></div></div>
+        <div class="cat-weight">${Math.round(tw*100)}% of total</div>
+      </div>
+    </div>`;
+  }
+
+  // Radar
+  buildRadar(depts.map(d=>d.name), depts.map(d=>monthData[d.fileId]?.finalScore??0));
+
+  // Dept cards
+  const grid=document.getElementById('deptGrid'); grid.innerHTML='';
+  const CBG={revenue:'#dbeafe',growth:'#fef3c7',people:'#ede9fe',org:'#cffafe'};
+  const CCol={revenue:'#2563eb',growth:'#0d9488',people:'#7c3aed',org:'#0891b2'};
+
+  for(const dept of depts){
+    const data=monthData[dept.fileId];
+    const pend=!data||data.status!=='ok';
+    const card=document.createElement('div');
+    card.className='dept-card'+(pend?' pending':'');
+    const bid='sb_'+dept.fileId.replace(/[^a-z0-9]/gi,'_');
+
+    let gaugeHtml='', compsHtml='', snapHtml='';
+    if(!pend){
+      gaugeHtml=`<div class="gauge-area">
+        ${gauge(data.finalScore,120,72,60,56,46,8,false)}
+        <div class="dept-score ${scCls(data.finalScore)}">${fmtN(data.finalScore)}</div>
+      </div>`;
+      compsHtml='<div class="dept-comps">';
+      for(const comp of data.components||[]){
+        const ttHtml=buildTT(comp);
+        const pct = comp.score!=null ? Math.min(100, (comp.score/10)*100) : 0;
+        compsHtml+=`<div class="comp-row" data-tt="${encodeURIComponent(ttHtml)}">
+          <div class="comp-dot" style="background:${scHex(comp.score)}"></div>
+          <div class="comp-name">${comp.name}</div>
+          <div class="comp-bar-wrap"><div class="comp-bar-fill" style="width:${pct}%;background:${scHex(comp.score)}"></div></div>
+          <div class="comp-w">${comp.weight}</div>
+          <div class="comp-sc ${scCls(comp.score)}">${fmtN(comp.score)}</div>
+        </div>`;
+      }
+      compsHtml+='</div>';
+      // snap button only shown in Update Mode
+    } else {
+      gaugeHtml=`<div class="pending-area">
+        <div class="pending-lbl">PENDING</div>
+        <div class="pending-sub">No snapshot for ${currentMonth}</div>
+      </div>`;
+      snapHtml=`<button class="snap-btn" id="${bid}" onclick="handleSnap(event,'${dept.fileId}')">
+        📸 Create Snapshot from New Month
+      </button>`;
+    }
+
+    const sheetUrl = `https://docs.google.com/spreadsheets/d/${dept.fileId}`;
+    const radarId  = `dr_${dept.fileId.replace(/[^a-z0-9]/gi,'_')}`;
+    const compsId  = `dc_${dept.fileId.replace(/[^a-z0-9]/gi,'_')}`;
+    card.innerHTML=`<div class="card-color-hdr" style="background:${CCol[dept.category]||'#666'}">
+        <div class="hdr-dept-name">
+          <a href="${sheetUrl}" target="_blank" class="sheet-link" style="opacity:.7;color:#fff;" title="Open in Google Sheets">
+            <svg width="10" height="10" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M7 3H3a1 1 0 00-1 1v9a1 1 0 001 1h9a1 1 0 001-1V9"/><path d="M10 2h4v4"/><line x1="14" y1="2" x2="7" y2="9"/>
+            </svg>
+          </a>
+          ${dept.name}
+        </div>
+        <div class="hdr-cat-pct">${dept.category.toUpperCase()} · ${Math.round(dept.weight*100)}%</div>
+      </div>
+      ${gaugeHtml}
+      ${!pend ? `<div id="${compsId}" class="dept-comps-wrap ${globalView==='radar'?'hidden':''}">${compsHtml}</div>
+      <div id="${radarId}" class="dept-radar-wrap ${globalView==='radar'?'visible':''}"><canvas id="c_${radarId}" height="180"></canvas></div>` : ''}`;
+    grid.appendChild(card);
+  }
+  attachTT();
+}
+
+function buildTT(comp){
+  let h=`<div class="tt-title">${comp.name}</div>`;
+  for(const m of comp.metrics||[]){
+    if(m.isInfo){
+      h+=`<div class="tt-row"><span class="tt-name" style="color:var(--muted)">${m.name}</span><span class="tt-inp">${m.input}</span></div>`;
+    } else {
+      h+=`<div class="tt-row"><span class="tt-name">${m.name}</span><span class="tt-inp">${m.input||''}</span><span class="tt-sc ${scCls(m.score)}">${fmtN(m.score)}</span></div>`;
+    }
+  }
+  // Monthly comments: component-level note first, then metric-level notes
+  const compNote   = comp.note || '';
+  const metricNotes = (comp.metrics||[]).map(m=>m.note).filter(Boolean).join(' · ');
+  const allNotes   = [compNote, metricNotes].filter(Boolean).join(' · ');
+  if(allNotes) h+=`<div class="tt-hint">${allNotes}</div>`;
+  return h;
+}
+
+// ── Radar ──────────────────────────────────────────────────────────────────
+function buildRadar(labels, data){
+  if(radarChart){radarChart.destroy();radarChart=null;}
+
+  const prevMonth = allMonths[allMonths.indexOf(currentMonth) - 1];
+  // Only show prev line if we have real scores (not all null/zero)
+  const prevScores = depts.map(d => prevMonthScores[d.fileId] ?? null);
+  const hasPrevData = prevScores.some(s => s !== null && s > 0);
+  const prevDataset = (prevMonth && hasPrevData) ? {
+    label: prevMonth,
+    data: prevScores.map(s => s ?? 0),
+    borderColor: 'rgba(0,0,0,.22)',
+    backgroundColor: 'transparent',
+    borderWidth: 1.5,
+    borderDash: [5, 4],
+    pointRadius: 3,
+    pointBackgroundColor: 'rgba(0,0,0,.22)',
+    pointHoverRadius: 5,
+    spanGaps: true,
+  } : null;
+
+  const datasets = [];
+  if (prevDataset) datasets.push(prevDataset);
+  datasets.push({
+    label: currentMonth,
+    data,
+    borderColor: '#2563eb',
+    backgroundColor: 'rgba(37,99,235,.08)',
+    borderWidth: 2.5,
+    pointRadius: 5,
+    pointBackgroundColor: '#2563eb',
+    pointHoverRadius: 7,
+  });
+
+  radarChart = new Chart(document.getElementById('radarChart'), {
+    type: 'radar',
+    data: { labels, datasets },
+    options: {
+      responsive: false,
+      plugins: {
+        legend: {
+          display: !!prevDataset, position: 'bottom',
+          labels: { font: { family: 'DM Mono', size: 9 }, boxWidth: 10, padding: 8 }
+        },
+        tooltip: {
+          backgroundColor: '#fff', borderColor: 'rgba(0,0,0,.1)', borderWidth: 1,
+          titleColor: '#1a2232', bodyColor: '#5a6a80',
+          titleFont: { family: 'DM Mono', size: 10 },
+          bodyFont: { family: 'DM Mono', size: 10 },
+          padding: 10,
+          callbacks: {
+            title: items => items[0]?.label || '',
+            label: c => ` ${c.dataset.label}: ${c.parsed.r != null ? c.parsed.r.toFixed(2) : '—'}`
+          }
+        }
+      },
+      scales: {
+        r: {
+          min: 0, max: 10,
+          ticks: { stepSize: 2, font: { family: 'DM Mono', size: 8 }, color: '#9ca3af', backdropColor: 'transparent' },
+          grid: { color: 'rgba(0,0,0,.07)' },
+          angleLines: { color: 'rgba(0,0,0,.08)' },
+          pointLabels: { font: { family: 'DM Sans', size: 9, weight: '600' }, color: '#5a6a80' }
+        }
+      }
+    },
+    plugins: [{
+      id: 'radarValues',
+      afterDatasetsDraw(chart) {
+        const currentDs = chart.data.datasets.find(d => d.label === currentMonth);
+        if (!currentDs) return;
+        const idx  = chart.data.datasets.indexOf(currentDs);
+        const meta = chart.getDatasetMeta(idx);
+        const ctx  = chart.ctx;
+        ctx.save();
+        ctx.font = '600 9px DM Mono, monospace';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillStyle = '#2563eb';
+        meta.data.forEach((pt, i) => {
+          const val = currentDs.data[i];
+          if (val == null) return;
+          const angle = pt.angle ?? 0;
+          const offset = 14;
+          ctx.fillText(val.toFixed(1), pt.x + Math.sin(angle)*offset, pt.y - Math.cos(angle)*offset);
+        });
+        ctx.restore();
+      }
+    }]
+  });
+}
+
+// ── Month nav ──────────────────────────────────────────────────────────────
+document.getElementById('btnPrev').addEventListener('click', async()=>{
+  const i=allMonths.indexOf(currentMonth);
+  if(i>0){currentMonth=allMonths[i-1];showLoading('Loading '+currentMonth+'…');await loadMonth(currentMonth);render();if(globalView==='radar'){document.querySelectorAll('.dept-radar-wrap').forEach(el=>buildCardRadar(el.id));}hideLoading();}
+});
+document.getElementById('btnNext').addEventListener('click', async()=>{
+  const i=allMonths.indexOf(currentMonth);
+  if(i<allMonths.length-1){currentMonth=allMonths[i+1];showLoading('Loading '+currentMonth+'…');await loadMonth(currentMonth);render();if(globalView==='radar'){document.querySelectorAll('.dept-radar-wrap').forEach(el=>buildCardRadar(el.id));}hideLoading();}
+});
+
+// ── Tooltip ────────────────────────────────────────────────────────────────
+const tt=document.getElementById('globalTT');
+function attachTT(){
+  document.querySelectorAll('.comp-row').forEach(r=>{
+    r.addEventListener('mouseenter',e=>{
+      const raw=r.getAttribute('data-tt');if(!raw)return;
+      tt.innerHTML=decodeURIComponent(raw);tt.classList.add('on');posTT(e);
+    });
+    r.addEventListener('mousemove',posTT);
+    r.addEventListener('mouseleave',()=>tt.classList.remove('on'));
+  });
+}
+function posTT(e){
+  const tw=tt.offsetWidth||260,th=tt.offsetHeight||120;
+  let x=e.clientX+14,y=e.clientY-10;
+  if(x+tw>window.innerWidth-8)x=e.clientX-tw-10;
+  if(y+th>window.innerHeight-8)y=window.innerHeight-th-8;
+  if(y<8)y=8;
+  tt.style.left=x+'px';tt.style.top=y+'px';
+}
+
+// ── Snapshot ───────────────────────────────────────────────────────────────
+function handleSnap(e, fileId){
+  const state=snapStates[fileId]||'idle';
+  if(state==='loading')return;
+  const btn=e.currentTarget;
+  if(state==='done'||btn.classList.contains('done'))return; // already done
+
+  if(state==='idle'){
+    snapStates[fileId]='confirm';
+    btn.textContent='⚠ Confirm? Click again';
+    btn.classList.add('warn');
+    setTimeout(()=>{
+      if(snapStates[fileId]==='confirm'){
+        snapStates[fileId]='idle';
+        btn.textContent='📸 Create Snapshot';
+        btn.className='snap-btn';
+      }
+    },4000);
+    return;
+  }
+
+  if(state==='confirm'){
+    snapStates[fileId]='loading';
+    btn.textContent='⏳ Creating…';
+    btn.disabled=true;
+    btn.className='snap-btn';
+    doSnapshot(fileId).then(ml=>{
+      snapStates[fileId]='done';
+      btn.textContent=`✓ Snapshot ${ml} saved`;
+      btn.className='snap-btn done';
+      btn.disabled=false;
+      // refresh tabs
+      loadSheetTabs(fileId).then(()=>{
+        if(!allMonths.includes(ml)){allMonths.push(ml);allMonths.sort(cmpMonth);}
+      });
+    }).catch(err=>{
+      snapStates[fileId]='idle';
+      btn.disabled=false;
+      btn.textContent='✗ '+err.message.substring(0,40);
+      btn.className='snap-btn';
+      btn.style.color='var(--red)';
+      setTimeout(()=>{btn.textContent='📸 Create Snapshot';btn.style='';},5000);
+    });
+  }
+}
+
+async function doSnapshot(fileId){
+  // 1. Get tab metadata
+  const meta=await api(`/${fileId}?fields=sheets.properties`);
+  const srcSheet=(meta.sheets||[]).find(s=>s.properties.title===SOURCE_TAB);
+  if(!srcSheet)throw new Error('"New Month" tab not found');
+  const srcId=srcSheet.properties.sheetId;
+
+  // 2. Read values (computed — no formulas)
+  const vr=await api(`/${fileId}/values/${sheetRange(SOURCE_TAB,'A:G')}?valueRenderOption=FORMATTED_VALUE`);
+  const values=vr.values||[];
+  if(!values.length)throw new Error('New Month tab is empty');
+
+  // 3. Find month — scan col D for first parseable MM-YYYY or YYYY-MM value (skip header row)
+  let rawM='', ml='';
+  for(const row of values){
+    const candidate=String(row[3]||'').trim();
+    const parsed=normMonth(candidate);
+    if(parsed){rawM=candidate;ml=parsed;break;}
+  }
+  if(!ml)throw new Error('No valid month found in col D. Expected format: 4-2026 or 04.2026');
+
+  // 4. Delete existing snapshot if any
+  const existSheet=(meta.sheets||[]).find(s=>s.properties.title===ml);
+  if(existSheet){
+    await api(`/${fileId}:batchUpdate`,{method:'POST',body:{requests:[{deleteSheet:{sheetId:existSheet.properties.sheetId}}]}});
+  }
+
+  // 5. Copy source sheet
+  const copy=await api(`/${fileId}/sheets/${srcId}:copyTo`,{method:'POST',body:{destinationSpreadsheetId:fileId}});
+  const newId=copy.sheetId;
+
+  // 6. Rename + recolour
+  await api(`/${fileId}:batchUpdate`,{method:'POST',body:{requests:[{updateSheetProperties:{properties:{sheetId:newId,title:ml,tabColorStyle:{rgbColor:{red:.176,green:.290,blue:.478}}},fields:'title,tabColorStyle'}}]}});
+
+  // 7. Clear → write static values
+  await api(`/${fileId}/values/${sheetRange(ml,'A:G')}:clear`,{method:'POST',body:{}});
+  await api(`/${fileId}/values/${sheetRange(ml,'A1')}?valueInputOption=USER_ENTERED`,{method:'PUT',body:{values}});
+
+  // 8. Paint first row red so snapshot is immediately distinct from New Month
+  try {
+    await api(`/${fileId}:batchUpdate`,{method:'POST',body:{requests:[{repeatCell:{
+      range:{sheetId:newId,startRowIndex:0,endRowIndex:1,startColumnIndex:0,endColumnIndex:26},
+      cell:{userEnteredFormat:{backgroundColor:{red:0.85,green:0.10,blue:0.10},textFormat:{foregroundColor:{red:1,green:1,blue:1},bold:true}}},
+      fields:'userEnteredFormat(backgroundColor,textFormat)'
+    }}]}});
+  } catch(e) { /* non-fatal */ }
+
+  return ml;
+}
+
+function normMonth(raw){
+  let m=raw.match(/^(\d{1,2})[-./](\d{4})$/);
+  if(m)return(+m[1]<10?'0':'')+m[1]+'.'+m[2];
+  m=raw.match(/^(\d{4})[-./](\d{1,2})$/);
+  if(m)return(+m[2]<10?'0':'')+m[2]+'.'+m[1];
+  return null;
+}
+
+
+
+
+function setGlobalView(mode) {
+  globalView = mode;
+  document.getElementById('gvsListBtn').classList.toggle('active', mode === 'list');
+  document.getElementById('gvsRadarBtn').classList.toggle('active', mode === 'radar');
+  // Show/hide in all normal cards
+  document.querySelectorAll('.dept-comps-wrap').forEach(el => el.classList.toggle('hidden', mode === 'radar'));
+  document.querySelectorAll('.dept-radar-wrap').forEach(el => {
+    el.classList.toggle('visible', mode === 'radar');
+    if (mode === 'radar') {
+      const radarId = el.id;
+      buildCardRadar(radarId);
+    }
+  });
+}
+
+// ── Per-card radar ──────────────────────────────────────────────────────────
+const cardRadarInstances = {};
+
+function deptView(btn, mode, radarId, compsId) {
+  const wrap = btn.closest('.dept-card');
+  wrap.querySelectorAll('.cvt-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  const radarWrap = document.getElementById(radarId);
+  const compsWrap = document.getElementById(compsId);
+  if (mode === 'radar') {
+    radarWrap.classList.add('visible');
+    compsWrap.classList.add('hidden');
+    buildCardRadar(radarId);
+  } else {
+    radarWrap.classList.remove('visible');
+    compsWrap.classList.remove('hidden');
+  }
+}
+
+function buildCardRadar(radarId) {
+  const canvasId = 'c_' + radarId;
+  const canvas   = document.getElementById(canvasId);
+  if (!canvas) return;
+  if (cardRadarInstances[radarId]) { cardRadarInstances[radarId].destroy(); delete cardRadarInstances[radarId]; }
+  const card  = canvas.closest('.dept-card');
+  const rows  = [...(card.querySelectorAll('.comp-row') || [])];
+  // Build labels with weight and wrap long names
+  const labels = rows.map(r => {
+    const name = r.querySelector('.comp-name')?.textContent || '';
+    const wt   = r.querySelector('.comp-w')?.textContent || '';
+    // Wrap at ~14 chars
+    const words = name.split(' ');
+    const lines = [];
+    let cur = '';
+    for (const w of words) {
+      if ((cur+' '+w).trim().length > 13 && cur) { lines.push(cur.trim()); cur = w; }
+      else cur = (cur+' '+w).trim();
+    }
+    if (cur) lines.push(cur);
+    if (wt) lines.push(wt);
+    return lines;
+  });
+  const scores  = rows.map(r => { const t = r.querySelector('.comp-sc')?.textContent; return t && t!=='—' ? parseFloat(t) : 0; });
+  const ttDatas = rows.map(r => decodeURIComponent(r.getAttribute('data-tt') || ''));
+  cardRadarInstances[radarId] = new Chart(canvas, {
+    type: 'radar',
+    data: { labels, datasets: [{ data: scores, borderColor: '#2563eb', backgroundColor: 'rgba(37,99,235,.1)', borderWidth: 2, pointRadius: 4, pointBackgroundColor: '#2563eb', pointHoverRadius: 6 }] },
+    options: { responsive: true, maintainAspectRatio: true,
+      plugins: { legend: { display: false },
+        tooltip: { backgroundColor: '#fff', borderColor: 'rgba(0,0,0,.1)', borderWidth: 1,
+          titleColor: '#1a2232', bodyColor: '#5a6a80',
+          titleFont: { family: 'DM Mono', size: 10 }, bodyFont: { family: 'DM Mono', size: 10 }, padding: 8,
+          callbacks: {
+            title: items => {
+              const idx = items[0]?.dataIndex;
+              const row = rows[idx];
+              return row?.querySelector('.comp-name')?.textContent || '';
+            },
+            label: c => {
+              const score = c.parsed?.r;
+              const row = rows[c.dataIndex];
+              const metricTexts = [];
+              if (row) {
+                // Parse stored tooltip HTML for metric names+scores
+                const tmp = document.createElement('div');
+                tmp.innerHTML = ttDatas[c.dataIndex] || '';
+                tmp.querySelectorAll('.tt-row').forEach(el => {
+                  const nm = el.querySelector('.tt-name')?.textContent || '';
+                  const sc = el.querySelector('.tt-sc')?.textContent || '';
+                  const ip = el.querySelector('.tt-inp')?.textContent || '';
+                  if (nm) metricTexts.push(`  ${nm}${ip?' ('+ip+')':''}: ${sc}`);
+                });
+              }
+              return [` Score: ${score?.toFixed(2) ?? '—'}`, ...metricTexts];
+            },
+            afterBody: items => {
+              const row = rows[items[0]?.dataIndex];
+              if (!row) return [];
+              const tmp = document.createElement('div');
+              tmp.innerHTML = ttDatas[items[0].dataIndex] || '';
+              const hint = tmp.querySelector('.tt-hint')?.textContent;
+              return hint ? ['', hint] : [];
+            }
+          } } },
+      scales: { r: { min: 0, max: 10,
+        ticks: { stepSize: 2, font: { family: 'DM Mono', size: 7 }, color: '#9ca3af', backdropColor: 'transparent' },
+        grid: { color: 'rgba(0,0,0,.07)' }, angleLines: { color: 'rgba(0,0,0,.08)' },
+        pointLabels: { font: { family: 'DM Sans', size: 7.5, weight: '600' }, color: '#5a6a80',
+          callback: lbl => Array.isArray(lbl) ? lbl : [lbl] } } } }
+  });
+}
+
+// ── Update Mode ─────────────────────────────────────────────────────────────
+async function toggleUpdateMode() {
+  updateMode = !updateMode;
+  const btn = document.getElementById('updateToggle');
+  btn.classList.toggle('active', updateMode);
+  document.body.classList.toggle('update-mode', updateMode);
+
+  if (updateMode) {
+    // Load New Month tab for every dept
+    showLoading('Loading New Month previews…');
+    nmCache = {};
+    await Promise.all(depts.map(async d => {
+      try {
+        const r = await api(`/${d.fileId}/values/${sheetRange('New Month','A:G')}?valueRenderOption=FORMATTED_VALUE`);
+        const parsed = parseSheet(r.values || []);
+        // Find declared month in col D
+        let declaredMonth = null;
+        for (const row of (r.values || [])) {
+          const p = normMonth(String(row[3]||'').trim());
+          if (p) { declaredMonth = p; break; }
+        }
+        nmCache[d.fileId] = { ...parsed, declaredMonth };
+      } catch(e) {
+        nmCache[d.fileId] = { error: e.message, declaredMonth: null };
+      }
+    }));
+    hideLoading();
+    renderUpdateCards();
+  } else {
+    // Refresh tabs + month data so new snapshots appear without page reload
+    showLoading('Refreshing…');
+    await Promise.all(depts.map(d => loadSheetTabs(d.fileId)));
+    // Rebuild allMonths from refreshed tabs
+    const ms = new Set([currentMonth]);
+    for (const tabs of Object.values(sheetTabs))
+      for (const t of tabs) if (/^\d{2}\.\d{4}$/.test(t.title)) ms.add(t.title);
+    allMonths = [...ms].sort(cmpMonth);
+    await loadMonth(currentMonth);
+    hideLoading();
+    render();
+  }
+}
+
+function renderUpdateCards() {
+  const grid = document.getElementById('deptGrid'); grid.innerHTML = '';
+  const CBG  = {revenue:'#dbeafe',growth:'#fef3c7',people:'#ede9fe',org:'#cffafe'};
+  const CCol = {revenue:'#2563eb',growth:'#0d9488',people:'#7c3aed',org:'#0891b2'};
+  snapStates = {};
+
+  for (const dept of depts) {
+    const nm   = nmCache[dept.fileId] || {};
+    const tabs = (sheetTabs[dept.fileId] || [])
+      .filter(t => /^\d{2}\.\d{4}$/.test(t.title))
+      .map(t => t.title)
+      .sort(cmpMonth);
+
+    const dm          = nm.declaredMonth;
+    const hasConflict = dm && tabs.includes(dm);
+    const isEmpty     = !dm;
+
+    // Month chip on preview header
+    let chipClass = 'ok', chipText = dm || '—';
+    if (isEmpty)     { chipClass = 'empty';    chipText = 'no month declared'; }
+    else if (hasConflict) { chipClass = 'conflict'; }
+
+    // Gauge from New Month data
+    let previewGauge = '';
+    if (!isEmpty && nm.finalScore != null) {
+      previewGauge = `<div class="gauge-area">
+        ${gauge(nm.finalScore, 120, 72, 60, 56, 46, 8, false)}
+        <div class="dept-score ${scCls(nm.finalScore)}">${fmtN(nm.finalScore)}</div>
+      </div>`;
+    } else if (nm.error) {
+      previewGauge = `<div class="pending-area"><div class="pending-lbl" style="color:var(--red)">ERROR</div><div class="pending-sub">${nm.error.slice(0,50)}</div></div>`;
+    } else {
+      previewGauge = `<div class="pending-area"><div class="pending-lbl">EMPTY</div><div class="pending-sub">New Month tab has no data</div></div>`;
+    }
+
+    // Component rows from New Month
+    let compsHtml = '';
+    if ((nm.components || []).length) {
+      compsHtml = '<div class="dept-comps">';
+      for (const comp of nm.components) {
+        const tt = buildTT(comp);
+        compsHtml += `<div class="comp-row" data-tt="${encodeURIComponent(tt)}">
+          <div class="comp-dot" style="background:${scHex(comp.score)}"></div>
+          <div class="comp-name">${comp.name}</div>
+          <div class="comp-w">${comp.weight}</div>
+          <div class="comp-sc ${scCls(comp.score)}">${fmtN(comp.score)}</div>
+        </div>`;
+      }
+      compsHtml += '</div>';
+    }
+
+    // Snapshot button
+    const bid = 'usb_' + dept.fileId.replace(/[^a-z0-9]/gi,'_');
+    let btnClass = 'ready', btnTxt = `📸 Snapshot as ${dm || '…'}`;
+    if (isEmpty)      { btnClass = 'loading'; btnTxt = '— no month declared'; }
+    else if (hasConflict) { btnClass = 'conflict'; btnTxt = `⚠ Overwrite ${dm}`; }
+    const disabled = isEmpty ? 'disabled' : '';
+
+    // Available month chips
+    const chipsHtml = tabs.length
+      ? tabs.map(m => `<span class="month-chip">${m}</span>`).join('')
+      : '<span class="no-snaps">no snapshots yet</span>';
+
+    const conflictWarn = hasConflict
+      ? `<div class="conflict-warn">⚠ ${dm} already exists — clicking will overwrite</div>` : '';
+
+    const card = document.createElement('div');
+    card.className = 'dept-card update-card';
+    card.innerHTML = `
+      <div class="card-top">
+        <div>
+          <div class="dept-name">${dept.name}</div>
+          <div class="dept-desc">${dept.category.toUpperCase()} · ${Math.round(dept.weight*100)}%</div>
+        </div>
+        <div class="dept-badge" style="background:${CBG[dept.category]||'#eee'};color:${CCol[dept.category]||'#666'}">${Math.round(dept.weight*100)}%</div>
+      </div>
+      <div class="nm-section">
+        <div class="nm-header">
+          <span class="nm-label">NEW MONTH TAB PREVIEW</span>
+          <span class="nm-month-chip ${chipClass}">${chipText}</span>
+        </div>
+        ${previewGauge}
+        ${compsHtml}
+        ${conflictWarn}
+        <button class="upd-snap-btn ${btnClass}" id="${bid}" onclick="handleSnapUpdate(event,'${dept.fileId}')" ${disabled}>
+          ${btnTxt}
+        </button>
+      </div>
+      <div class="month-chips">${chipsHtml}</div>`;
+    grid.appendChild(card);
+  }
+  attachTT();
+}
+
+function handleSnapUpdate(e, fileId) {
+  const st  = snapStates[fileId] || 'idle';
+  const btn = e.currentTarget;
+  if (st === 'loading' || btn.disabled) return;
+  if (st === 'idle') {
+    snapStates[fileId] = 'confirm';
+    const orig = btn.textContent.trim();
+    btn.textContent = 'Confirm? Click again';
+    btn.style.fontStyle = 'italic';
+    setTimeout(() => {
+      if (snapStates[fileId] === 'confirm') {
+        snapStates[fileId] = 'idle';
+        btn.textContent = orig;
+        btn.style.fontStyle = '';
+      }
+    }, 4000);
+    return;
+  }
+  if (st === 'confirm') {
+    snapStates[fileId] = 'loading';
+    btn.textContent = '⏳ Creating…';
+    btn.className = 'upd-snap-btn loading';
+    btn.disabled = true;
+    doSnapshot(fileId).then(ml => {
+      snapStates[fileId] = 'done';
+      btn.textContent = `✓ ${ml} saved`;
+      btn.className = 'upd-snap-btn done';
+      btn.disabled = false;
+      // Add chip
+      const card = btn.closest('.dept-card');
+      const chipsDiv = card.querySelector('.month-chips');
+      if (chipsDiv) {
+        const existing = [...chipsDiv.querySelectorAll('.month-chip')].map(c => c.textContent);
+        if (!existing.includes(ml)) {
+          const chip = document.createElement('span');
+          chip.className = 'month-chip';
+          chip.textContent = ml;
+          chipsDiv.querySelector('.no-snaps')?.remove();
+          chipsDiv.appendChild(chip);
+        }
+      }
+      // Update global state
+      loadSheetTabs(fileId).then(() => {
+        if (!allMonths.includes(ml)) { allMonths.push(ml); allMonths.sort(cmpMonth); }
+      });
+    }).catch(err => {
+      snapStates[fileId] = 'idle';
+      btn.disabled = false;
+      btn.textContent = '✗ ' + err.message.slice(0, 40);
+      btn.className = 'upd-snap-btn conflict';
+      setTimeout(() => {
+        btn.textContent = '📸 Retry';
+        btn.className = 'upd-snap-btn ready';
+        btn.style.fontStyle = '';
+      }, 5000);
+    });
+  }
+}
+
+// ── History chart ──────────────────────────────────────────────────────────
+document.getElementById('openHistory').addEventListener('click',async()=>{
+  document.getElementById('histModal').classList.add('on');
+  await openChartsModal('company');
+});
+document.getElementById('closeHistory').addEventListener('click',()=>document.getElementById('histModal').classList.remove('on'));
+document.getElementById('histModal').addEventListener('click',e=>{if(e.target===document.getElementById('histModal'))document.getElementById('histModal').classList.remove('on');});
+
+async function openChartsModal(tabKey) {
+  // Clear previous chart
+  if (histChart) { histChart.destroy(); histChart = null; }
+
+  // Build tab bar
+  const tabBar = document.getElementById('chartTabs');
+  const tabs = [{key:'company', label:'Company'}, ...depts.map(d => ({key:d.fileId, label:d.name}))];
+  tabBar.innerHTML = tabs.map(t => {
+    const active = t.key === tabKey;
+    return `<button onclick="openChartsModal('${t.key}')" style="padding:7px 14px;border:none;background:none;
+      cursor:pointer;font-family:var(--mono);font-size:11px;font-weight:${active?700:400};
+      color:${active?'#2563eb':'#7a8a9e'};border-bottom:2px solid ${active?'#2563eb':'transparent'};
+      white-space:nowrap;">${t.label}</button>`;
+  }).join('');
+
+  // Show spinner inside modal (not full-page overlay)
+  const wrap = document.getElementById('timelineChartWrap');
+  wrap.innerHTML = '<div style="height:100%;display:flex;align-items:center;justify-content:center;color:var(--muted);font-family:var(--mono);font-size:11px;gap:10px;"><div style="width:20px;height:20px;border:2px solid var(--border2);border-top-color:var(--blue);border-radius:50%;animation:spin .8s linear infinite"></div>Loading…</div>';
+
+  try {
+    const months = allMonths.filter(m => /^\d{2}\.\d{4}$/.test(m)).sort(cmpMonth);
+    if (months.length < 2) {
+      wrap.innerHTML = '<div style="height:100%;display:flex;align-items:center;justify-content:center;color:var(--muted);font-family:var(--mono);font-size:12px;text-align:center;padding:20px;">Need at least 2 snapshot months to display the timeline.</div>';
+      return;
+    }
+
+    // Load all months for all depts
+    const cache = {};
+    await Promise.all(months.map(async mon => {
+      cache[mon] = {};
+      await Promise.all(depts.map(async d => {
+        try {
+          const r = await api(`/${d.fileId}/values/${sheetRange(mon,'A:G')}?valueRenderOption=FORMATTED_VALUE`);
+          const parsed = parseSheet(r.values||[]);
+          cache[mon][d.fileId] = parsed;
+        } catch { cache[mon][d.fileId] = null; }
+      }));
+    }));
+
+    // Set up canvas
+    wrap.innerHTML = '<canvas id="timelineCanvas"></canvas>';
+    const canvas = document.getElementById('timelineCanvas');
+
+    const DC = ['#2563eb','#0d9488','#16a34a','#7c3aed','#0891b2','#dc2626','#db2877','#92400e'];
+    const h2r = hex => {
+      const r=parseInt(hex.slice(1,3),16),g=parseInt(hex.slice(3,5),16),b=parseInt(hex.slice(5,7),16);
+      return `${r},${g},${b}`;
+    };
+
+    let datasets = [];
+
+    if (tabKey === 'company') {
+      depts.forEach((d, i) => {
+        datasets.push({
+          label: d.name,
+          data: months.map(mon => cache[mon][d.fileId]?.finalScore ?? null),
+          borderColor: `rgba(${h2r(DC[i])},.55)`,
+          backgroundColor: 'transparent',
+          borderWidth: 1.5, pointRadius: 3, pointHoverRadius: 5,
+          tension: .3, order: 2, spanGaps: true
+        });
+      });
+      datasets.push({
+        label: 'Company Score',
+        data: months.map(mon => {
+          if (!depts.every(d => cache[mon][d.fileId]?.finalScore != null)) return null;
+          return depts.reduce((s,d) => s + d.weight * cache[mon][d.fileId].finalScore, 0);
+        }),
+        borderColor: '#1a2232', backgroundColor: 'rgba(26,34,50,.05)',
+        borderWidth: 4, pointRadius: 6, pointHoverRadius: 8,
+        tension: .3, fill: true, order: 1, spanGaps: false
+      });
+    } else {
+      const dept = depts.find(d => d.fileId === tabKey);
+      if (!dept) return;
+      datasets.push({
+        label: dept.name + ' Score',
+        data: months.map(mon => cache[mon][dept.fileId]?.finalScore ?? null),
+        borderColor: '#1a2232', backgroundColor: 'rgba(26,34,50,.04)',
+        borderWidth: 3.5, pointRadius: 5, pointHoverRadius: 7,
+        tension: .3, fill: true, order: 1, spanGaps: true
+      });
+      const compNames = [...new Set(months.flatMap(mon =>
+        (cache[mon][dept.fileId]?.components||[]).map(c => c.name)
+      ))];
+      compNames.forEach((cname, i) => {
+        datasets.push({
+          label: cname,
+          data: months.map(mon =>
+            (cache[mon][dept.fileId]?.components||[]).find(c => c.name === cname)?.score ?? null
+          ),
+          borderColor: `rgba(${h2r(DC[i % DC.length])},.7)`,
+          backgroundColor: 'transparent',
+          borderWidth: 1.5, pointRadius: 3, pointHoverRadius: 5,
+          tension: .3, order: 2, spanGaps: true
+        });
+      });
+    }
+
+    datasets.forEach(ds => { ds._origBorderColor = ds.borderColor; ds._origWidth = ds.borderWidth; });
+    histChart = new Chart(canvas.getContext('2d'), {
+      type: 'line',
+      data: { labels: months, datasets },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        interaction: { mode: 'index', intersect: false },
+        plugins: {
+          legend: {
+            position: 'bottom',
+            labels: { font: { family: 'DM Mono', size: 10 }, boxWidth: 12, padding: 10, usePointStyle: true },
+            onHover(e, item, legend) {
+              const chart = legend.chart;
+              // Hide tooltip when hovering legend
+              if (chart.tooltip) { chart.tooltip.opacity = 0; }
+              chart.data.datasets.forEach((ds, i) => {
+                const orig = ds._origBorderColor || ds.borderColor;
+                ds._origBorderColor = orig;
+                const isRgba = typeof orig === 'string' && orig.includes('rgba');
+                const faded = isRgba ? orig.replace(/,\s*[\d.]+\s*\)$/, ',.08)') : (typeof orig === 'string' ? orig.slice(0,7) + '20' : 'rgba(0,0,0,.08)');
+                ds.borderColor = i === item.datasetIndex ? orig : faded;
+                ds._origWidth = ds._origWidth || ds.borderWidth;
+                ds.borderWidth = i === item.datasetIndex ? ds._origWidth : 1;
+              });
+              chart.update('none');
+            },
+            onLeave(e, item, legend) {
+              const chart = legend.chart;
+              chart.data.datasets.forEach(ds => {
+                if (ds._origBorderColor) { ds.borderColor = ds._origBorderColor; delete ds._origBorderColor; }
+                if (ds._origWidth) { ds.borderWidth = ds._origWidth; delete ds._origWidth; }
+              });
+              chart.update('none');
+            }
+          },
+          tooltip: {
+            backgroundColor: '#fff', borderColor: 'rgba(0,0,0,.12)', borderWidth: 1,
+            titleColor: '#1a2232', bodyColor: '#5a6a80',
+            titleFont: { family: 'DM Mono', size: 11 }, bodyFont: { family: 'DM Mono', size: 10 }, padding: 12,
+            callbacks: {
+              title: items => items[0]?.label ?? '',
+              label: c => ' ' + (c.dataset.label||'') + ': ' + (c.parsed?.y != null ? Number(c.parsed.y).toFixed(2) : '—')
+            }
+          }
+        },
+        scales: {
+          x: { grid: { color: 'rgba(0,0,0,.05)' }, ticks: { font: { family: 'DM Mono', size: 10 }, maxRotation: 0 } },
+          y: { min: 0, max: 10, grid: { color: 'rgba(0,0,0,.05)' }, ticks: { font: { family: 'DM Mono', size: 10 }, stepSize: 2 } }
+        }
+      }
+    });
+  } catch(err) {
+    wrap.innerHTML = `<div style="height:100%;display:flex;align-items:center;justify-content:center;color:var(--red);font-family:var(--mono);font-size:12px;padding:20px;text-align:center;">Error loading timeline: ${err.message}</div>`;
+    console.error('Timeline error:', err);
+  }
+}
+
+// ── Utils ──────────────────────────────────────────────────────────────────
+function expectedMonth(){const d=new Date(),m=d.getMonth()+1,y=d.getFullYear();return(m<10?'0':'')+m+'.'+y;}
+function cmpMonth(a,b){const[am,ay]=a.split('.').map(Number),[bm,by]=b.split('.').map(Number);return ay!==by?ay-by:am-bm;}
+function showLoading(msg){document.getElementById('loadingText').textContent=msg||'LOADING…';document.getElementById('loadingOverlay').classList.add('on');}
+function hideLoading(){document.getElementById('loadingOverlay').classList.remove('on');}
+function showToast(msg, color) {
+  const t = document.createElement('div');
+  t.style.cssText = `position:fixed;bottom:70px;left:50%;transform:translateX(-50%);background:${color||'#1a2232'};
+    color:#fff;padding:10px 20px;border-radius:10px;font-family:var(--mono);font-size:11px;z-index:9999;
+    box-shadow:0 4px 16px rgba(0,0,0,.25);pointer-events:none;white-space:nowrap;`;
+  t.textContent = msg;
+  document.body.appendChild(t);
+  setTimeout(() => t.remove(), 6000);
+}
+function showErr(msg){const b=document.getElementById('errBanner');b.textContent=msg;b.classList.add('on');setTimeout(()=>b.classList.remove('on'),8000);}
+</script>
+</body>
+</html>
